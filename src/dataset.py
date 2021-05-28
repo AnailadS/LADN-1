@@ -38,12 +38,12 @@ class dataset_makeup(data.Dataset):
 
         '''A_all and B_all are used for sampling datapoints for testing forward and interpolation forwarding'''
         # Before makeup
-        imgs_before = os.listdir(os.path.join(self.dataroot, "before"))
+        imgs_before = sorted(os.listdir(os.path.join(self.dataroot, "before")))
         self.A_all = [os.path.join(self.dataroot, "before", x) for x in imgs_before]
         self.A = self.A_all
 
         # After makeup
-        imgs_after = os.listdir(os.path.join(self.dataroot, "after"))
+        imgs_after = sorted(os.listdir(os.path.join(self.dataroot, "after")))
         self.B_all = [os.path.join(self.dataroot, "after", x) for x in imgs_after]
         if self.no_extreme:
             imgs_after = [f for f in imgs_after if f[0]=="0" or f[:2] in ["20", "30", "31"]]
