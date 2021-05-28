@@ -131,7 +131,7 @@ def main():
     max_it = 500000
     for ep in range(ep0, opts.n_ep):
         # Run the testing set every test_interval epochs
-        if opts.test_forward and (ep + 1) % opts.test_interval == 0:
+        if opts.test_forward and ep > 0 and (ep + 1) % opts.test_interval == 0:
             print("starting forward for testing images")
             for i in test_indeces_list:
                 print("forwarding images %d testing." % (i))
