@@ -689,7 +689,7 @@ class LADN(nn.Module):
         self.backward_EG()
 
         # self.enc_c_opt.step()
-        self.enc_a_opt.step()
+        # self.enc_a_opt.step()
         # self.gen_opt.step()
 
         # update G, Ec
@@ -698,6 +698,7 @@ class LADN(nn.Module):
         self.backward_G_alone()
         self.enc_c_opt.step()
         self.gen_opt.step()
+        self.enc_a_opt.step()
 
 
 
