@@ -49,7 +49,15 @@ class dataset_makeup(data.Dataset):
             imgs_after = [f for f in imgs_after if f[0]=="0" or f[:2] in ["20", "30", "31"]]
         if self.extreme_only:
             imgs_after = [f for f in imgs_after if f[0]=="1" or f[:2] in ["21"]]
+
         self.B = [os.path.join(self.dataroot, "after", x) for x in imgs_after]
+
+        if self.mode == "test":
+            self.A = self.A[:self.test_size]
+            self.B = self.B[:self.test_size]
+        elif self.mode == "train":
+            self.A = self.A[self.test_size:]
+            self.B = self.B[self.test_size:]
 
         self.A_size = len(self.A)
         self.B_size = len(self.B)
@@ -76,11 +84,12 @@ class dataset_makeup(data.Dataset):
                     for path_B in self.B:
                         path_C = self.getPathC(path_A, path_B)
                         self.datapoints.append([path_A, path_B, path_C])
-                random.shuffle(self.datapoints)
+                # random.shuffle(self.datapoints)
                 self.datapoints = self.datapoints[:self.test_size]
 
             self.dataset_size = len(self.datapoints)
             print("Dataset for testing initialized, including %d data points" % self.dataset_size)
+
         # interpolate mode, will return one before and two after images for interpolation of makeup styles
         elif self.mode == "interpolate":
             self.A_interpolate = np.random.choice(self.B, opts.test_size)
