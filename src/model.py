@@ -687,13 +687,14 @@ class LADN(nn.Module):
         self.enc_a_opt.zero_grad()
         self.gen_opt.zero_grad()
         self.backward_EG()
-        self.enc_c_opt.step()
+
+        # self.enc_c_opt.step()
         self.enc_a_opt.step()
-        self.gen_opt.step()
+        # self.gen_opt.step()
 
         # update G, Ec
-        self.enc_c_opt.zero_grad()
-        self.gen_opt.zero_grad()
+        # self.enc_c_opt.zero_grad()
+        # self.gen_opt.zero_grad()
         self.backward_G_alone()
         self.enc_c_opt.step()
         self.gen_opt.step()
