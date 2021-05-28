@@ -85,7 +85,7 @@ class dataset_makeup(data.Dataset):
                         path_C = self.getPathC(path_A, path_B)
                         self.datapoints.append([path_A, path_B, path_C])
                 # random.shuffle(self.datapoints)
-                self.datapoints = self.datapoints[:self.test_size]
+                # self.datapoints = self.datapoints[:self.test_size]
 
             self.dataset_size = len(self.datapoints)
             print("Dataset for testing initialized, including %d data points" % self.dataset_size)
