@@ -2,7 +2,7 @@ import torch
 from options import Options
 from dataset import dataset_makeup
 from model import LADN
-from saver import Saver
+#from saver import Saver
 
 '''
 opts.phase
@@ -57,7 +57,7 @@ def main():
     print('start the training at epoch %d'%(ep0))
 
     # saver for display and output
-    saver = Saver(opts, len(dataset))
+    # saver = Saver(opts, len(dataset))
 
     # Run only one epoch when testing
     if opts.phase == "test":
@@ -83,8 +83,8 @@ def main():
                 index_b = int(data['index_B'])
 
                 model.test_forward(images_a, images_b, images_c)
-                saver.write_test_img(ep, i, model, index_a = index_a, index_b = index_b)
-                saver.save_test_img(ep, i, model, index_a = index_a, index_b = index_b)
+                # saver.write_test_img(ep, i, model, index_a = index_a, index_b = index_b)
+                # saver.save_test_img(ep, i, model, index_a = index_a, index_b = index_b)
 
         if opts.interpolate_forward and (ep+1) % opts.test_interval == 0:
             print("starting forward for interpolated images")
@@ -101,7 +101,7 @@ def main():
                 index_b = int(data['index_B'])
 
                 model.interpolate_forward(images_a, images_b1, images_b2)
-                saver.save_interpolate_img(ep, i, model, opts.interpolate_num, index_a = index_a, index_b = index_b)
+                # saver.save_interpolate_img(ep, i, model, opts.interpolate_num, index_a = index_a, index_b = index_b)
 
         if opts.phase == "train":
             for it, data in enumerate(train_loader):
@@ -127,13 +127,13 @@ def main():
 
                 # save to display file
                 if not opts.no_display_img:
-                    saver.write_display(total_it, model)
+                    # saver.write_display(total_it, model)
 
                 print('total_it: %d (ep %d, it %d), lr %08f' % (total_it, ep, it, model.gen_opt.param_groups[0]['lr']))
                 total_it += 1
                 if total_it >= max_it:
-                    saver.write_img(-1, model)
-                    saver.write_model(-1, model)
+                    # saver.write_img(-1, model)
+                    # saver.write_model(-1, model)
                     break
 
             # decay learning rate
@@ -141,10 +141,10 @@ def main():
                 model.update_lr()
 
             # save result image
-            saver.write_img(ep, model)
+            # saver.write_img(ep, model)
 
             # Save network weights
-            saver.write_model(ep, total_it, model)
+            # saver.write_model(ep, total_it, model)
 
     return
 
