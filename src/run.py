@@ -6,6 +6,7 @@ import datetime
 import wandb
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 # from saver import Saver
 
@@ -76,6 +77,10 @@ def save_test_img(ep, index, model, index_a, index_b):
     # img = Image.fromarray(img)
     # img.save(os.path.join(path, names[i] + '.jpg'))
 
+# save model
+def write_model(ep, total_it, model, model_dir):
+    print('--- save the model @ ep %d ---' % (ep))
+    model.save('%s/%05d.pth' % (model_dir, ep), ep, total_it)
 
 def main():
     # parse options
@@ -126,6 +131,10 @@ def main():
     if opts.phase == "test":
         opts.n_ep = ep0 + 1
         opts.test_interval = 1
+
+    model_dir = os.path.join("results", name)
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
 
     # train
     print('\n--- train ---')
@@ -206,7 +215,7 @@ def main():
         # saver.write_img(ep, model)
 
         # Save network weights
-        # saver.write_model(ep, total_it, model)
+        write_model(ep, total_it, model, model_dir)
 
     return
 
