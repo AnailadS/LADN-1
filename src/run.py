@@ -80,14 +80,17 @@ def save_test_img(ep, index, model, index_a, index_b):
 # save model
 def write_model(ep, total_it, model, model_dir):
     print('--- save the model @ ep %d ---' % (ep))
-    model.save('%s/%05d.pth' % (model_dir, ep), ep, total_it)
+    if ep in [30, 100, 300, 500, 700, 1000]:
+        model.save('%s/%05d.pth' % (model_dir, ep), ep, total_it)
+    else:
+        model.save('%s/%05d.pth' % (model_dir, ep%2), ep, total_it)
 
 def main():
     # parse options
     parser = Options()
     opts = parser.parse()
 
-    name = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    name = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
     wandb.init(project="LADN-official", entity="daliana-st", name=name)
 
     test_indeces_list = [0, 11, 22, 33]
