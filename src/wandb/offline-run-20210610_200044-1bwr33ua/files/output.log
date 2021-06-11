@@ -1,0 +1,18 @@
+
+--- load dataset ---
+Dataset for training A: 234, B: 255 images
+API landmarks loaded successfully!
+
+--- load model ---
+/home/daliana/anaconda3/envs/pytorchenv/lib/python3.7/site-packages/torch/cuda/__init__.py:52: UserWarning: CUDA initialization: Found no NVIDIA driver on your system. Please check that you have an NVIDIA GPU and installed a driver from http://www.nvidia.com/Download/index.aspx (Triggered internally at  /opt/conda/conda-bld/pytorch_1607370141920/work/c10/cuda/CUDAFunctions.cpp:100.)
+  return torch._C._cuda_getDeviceCount() > 0
+Traceback (most recent call last):
+  File "run.py", line 227, in <module>
+    main()
+  File "run.py", line 119, in main
+    model = LADN(opts)
+  File "/home/daliana/GANS_cercetare/LADN-1/src/model.py", line 45, in __init__
+    self.disA = init_net(networks.MultiScaleDis(opts.input_dim_a, opts.dis_scale, norm=opts.dis_norm, sn=opts.dis_spectral_norm), opts.backup_gpu, init_type='normal', gain=0.02)
+  File "/home/daliana/GANS_cercetare/LADN-1/src/networks.py", line 343, in init_net
+    assert(torch.cuda.is_available())
+AssertionError

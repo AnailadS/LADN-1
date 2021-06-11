@@ -1,0 +1,11 @@
+
+--- load dataset ---
+Dataset for training A: 234, B: 255 images
+Traceback (most recent call last):
+  File "run.py", line 227, in <module>
+    main()
+  File "run.py", line 104, in main
+    dataset = dataset_makeup(opts)
+  File "/home/daliana/GANS_cercetare/LADN-1/src/dataset.py", line 112, in __init__
+    api_landmarks = pickle.load(open(self.landmark_file, 'rb'))
+FileNotFoundError: [Errno 2] No such file or directory: '/home/Daliana/Downloads/makeup/landmark.pk'

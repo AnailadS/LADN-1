@@ -1,0 +1,10 @@
+
+--- load dataset ---
+Dataset for training A: 234, B: 255 images
+API landmarks loaded successfully!
+Traceback (most recent call last):
+  File "run.py", line 229, in <module>
+    main()
+  File "run.py", line 108, in main
+    print(dataset.__getitem__(0).shape)
+AttributeError: 'dict' object has no attribute 'shape'

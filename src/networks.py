@@ -6,6 +6,16 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 
+class H(nn.Module):
+    def __init__(self, ngf=64, nc=256):
+        super(H, self).__init__()
+        self.nc = nc
+        self.ngf = ngf
+        self.mlp = nn.Sequential(*[nn.Linear(self.ngf * 2, self.nc), nn.ReLU(), nn.Linear(self.nc, self.nc)])
+
+    def forward(self, inputs):
+        out = self.mlp(inputs)
+        return out
 
 ####################################################################
 #------------------------- Discriminators --------------------------

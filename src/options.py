@@ -21,6 +21,8 @@ class Options():
         self.parser.add_argument('--no_extreme', action='store_true', help='whether to exclude the extreme makeup images in the after makeup domain')
         self.parser.add_argument('--extreme_only', action='store_true', help='whether to use only the extreme makeup images in the after makeup domain')
 
+        self.parser.add_argument('--tau', type=float, default=0.07, help='temperature parameter for contrastive loss')
+
         self.parser.add_argument('--test_forward', action="store_true", help="\
             If opts.phase == test, this flag will be set. \
             if opts.test_forward is True, run over the testing set every opts.test_interval epochs. \
@@ -46,6 +48,7 @@ class Options():
         self.parser.add_argument('--n_local', type=int, default=3, help="Number of the local parts for local discriminators (see details in helpers.py)")
 
         # loss related
+        self.parser.add_argument('--contrastive_loss', action='store_true',help='whether to use contrastive loss')
         self.parser.add_argument('--style_d_ls_weight', type=float, default=2.0, help='weight of the loss_D_Style')
         self.parser.add_argument('--style_g_ls_weight', type=float, default=2.0, help='weight of the loss_G_GAN_style')
         self.parser.add_argument('--recon_weight', type=float, default=8.0, help='weight of the reconstruction loss')

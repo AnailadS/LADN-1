@@ -25,6 +25,9 @@ class LADN(nn.Module):
         self.recon_weight = opts.recon_weight
         self.interpolate_num = opts.interpolate_num
 
+        self.contrastive_loss = opts.contrastive_loss
+        self.tau = opts.tau
+
         self.n_local = opts.n_local
         self.local_parts = ['eye', 'eye_', 'mouth', 'nose', 'cheek', 'cheek_', 'eyebrow', 'eyebrow_', 'uppernose', 'forehead', 'sidemouth', 'sidemouth_']
         self.local_parts_laplacian_weight = [4.0, 4.0, 2.0, 2.0, 4.0, 4.0, 3.0, 3.0, 2.0, 4.0, 2.0, 2.0]
@@ -40,6 +43,12 @@ class LADN(nn.Module):
             lr_dstyle = lr
         if self.local_style_dis:
             lr_dlocal_style = lr
+
+        if self.contrastive_loss:
+            self.H = init_net(networks.H(), opts.gpu, init_type='normal', gain=0.02)
+            self.H_opt = torch.optim.Adam(self.H.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0.0001)
+            self.cross_entropy_loss = nn.CrossEntropyLoss()
+            self.nce_loss_weight = 2.0
 
         # discriminators
         self.disA = init_net(networks.MultiScaleDis(opts.input_dim_a, opts.dis_scale, norm=opts.dis_norm, sn=opts.dis_spectral_norm), opts.backup_gpu, init_type='normal', gain=0.02)
@@ -304,6 +313,9 @@ class LADN(nn.Module):
         self.z_attr_a = self.z_attr_a.to(self.device)
         self.z_attr_b = self.z_attr_b.to(self.device)
 
+        # get encoded z_a_c (style encoding for synthetic ground truth)
+        self.z_attr_c = self.enc_a.forward_b(self.real_C_encoded).to(self.device)
+
         # get random z_a
         self.z_random = torch.randn_like(self.z_attr_a).to(self.device)
 
@@ -523,6 +535,69 @@ class LADN(nn.Module):
                     local_part = local_part.split('_')[0]
                     loss_G_GAN_local_style = self.backward_G_GAN_local_style(getattr(self, 'dis'+local_part.capitalize()), self.rects_transfer_encoded[:,i,:], self.rects_after_encoded[:,i,:], flip=True)
                     setattr(self, 'G_GAN_'+local_part+'2_style', loss_G_GAN_local_style.to(self.device))
+
+        if self.contrastive_loss:
+            """
+            self.z_attr_b
+            self.z_attr_recon_b
+            self.z_attr_c """
+
+            Rh = 1.0 * self.z_attr_b.size(2)/self.real_B_encoded.size(2)
+            Rw = 1.0 * self.z_attr_b.size(3)/self.real_B_encoded.size(3)
+
+            N = self.real_B_encoded.size(0)
+            C = self.z_attr_b.size(1)
+
+            self.total_patch_nce_loss = 0
+
+
+            for i in range(self.n_local):
+
+                transf_vect = torch.empty((N, C)).to(self.device)
+                gt_vect = torch.empty((N, C)).to(self.device)
+                ref_vect = torch.empty((N, C)).to(self.device)
+
+                for k in range(N):
+
+                    # get reference image rect coordinates
+                    x1, x2, y1, y2 = self.rects_after_encoded[k, i, :]
+                    # convert them to feature map location
+                    x1 = int(x1 * Rh)
+                    x2 = int(x2 * Rh)
+                    y1 = int(y1 * Rw)
+                    y2 = int(y2 * Rw)
+                    # get GlobalAvgPooling(feature map patch of reference image)
+                    ref_vect[k] = self.z_attr_b[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+
+                    # get transfer image rect coordinates
+                    x1, x2, y1, y2 = self.rects_transfer_encoded[k, i, :]
+                    # convert them to feature map location
+                    x1 = int(x1 * Rh)
+                    x2 = int(x2 * Rh)
+                    y1 = int(y1 * Rw)
+                    y2 = int(y2 * Rw)
+                    # get GlobalAvgPooling(feature map patch of transfered image)
+                    transf_vect[k] = self.z_attr_recon_b[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+                    # get GlobalAvgPooling(feature map patch of synthetic ground truth image)
+                    gt_vect[k] = self.z_attr_c[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+
+                ref_vect_ = self.H(ref_vect)
+                transf_vect_ = self.H(transf_vect)
+                gt_vect_ = self.H(gt_vect)
+
+                pos_samples = torch.bmm(ref_vect_.view(N, 1, -1), transf_vect_.view(N, -1, 1))
+                pos_samples = pos_samples.view(N, 1)
+                neg_samples = torch.bmm(ref_vect_.view(N, 1, -1), gt_vect_.view(N, -1, 1))
+                neg_samples = neg_samples.view(N, 1)
+
+                all_samples = torch.cat((pos_samples, neg_samples), dim=1)/self.tau
+                targets = torch.zeros(N, dtype=torch.long, device=self.device)
+
+                self.total_patch_nce_loss += self.cross_entropy_loss(all_samples, targets)
+
+            self.total_patch_nce_loss = self.nce_loss_weight * self.total_patch_nce_loss / self.n_local
+            # self.total_patch_nce_loss = self.total_patch_nce_loss.to(self.device)
+
         if self.local_laplacian_loss:
             for i in range(self.n_local):
                 local_part = self.local_parts[i]
@@ -624,6 +699,9 @@ class LADN(nn.Module):
                 local_part = self.local_parts[i]
                 loss_G = loss_G + getattr(self, 'G_GAN_'+local_part+'_local_smooth')
 
+        if self.contrastive_loss:
+            loss_G = loss_G + self.total_patch_nce_loss
+
         loss_G.backward(retain_graph=True)
 
         self.gan_loss_a = loss_G_GAN_A.item()
@@ -663,7 +741,6 @@ class LADN(nn.Module):
                 local_part = self.local_parts[i]
                 setattr(self, 'gan_loss_'+local_part+'_local_smooth', getattr(self, 'G_GAN_'+local_part+'_local_smooth').item())
 
-
     def backward_G_alone(self):
         # Ladv for generator
         loss_G_GAN2_A = self.backward_G_GAN(self.fake_A_random, self.disA2).to(self.device)
@@ -686,6 +763,8 @@ class LADN(nn.Module):
         self.enc_c_opt.zero_grad()
         self.enc_a_opt.zero_grad()
         self.gen_opt.zero_grad()
+        if self.contrastive_loss:
+            self.H_opt.zero_grad()
         self.backward_EG()
 
         # self.enc_c_opt.step()
@@ -699,8 +778,8 @@ class LADN(nn.Module):
         self.enc_c_opt.step()
         self.gen_opt.step()
         self.enc_a_opt.step()
-
-
+        if self.contrastive_loss:
+            self.H_opt.step()
 
     # forward method for interpolation purpose
     def interpolate_forward(self, images_a, images_b1, images_b2):
