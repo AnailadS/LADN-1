@@ -110,6 +110,9 @@ class LADN(nn.Module):
         
         if self.style_dis:
             self.disStyle_sch = networks.get_scheduler(self.disStyle_opt, opts, last_ep)
+
+        if self.contrastive_loss:
+            self.H_sch = networks.get_scheduler(self.H_opt, opts, last_ep)
         
         if self.local_style_dis:
             for i in range(self.n_local):
@@ -548,7 +551,7 @@ class LADN(nn.Module):
             N = self.real_B_encoded.size(0)
             C = self.z_attr_b.size(1)
 
-            self.total_patch_nce_loss = 0
+            total_patch_nce_loss = 0
 
 
             for i in range(self.n_local):
@@ -581,9 +584,12 @@ class LADN(nn.Module):
                     # get GlobalAvgPooling(feature map patch of synthetic ground truth image)
                     gt_vect[k] = self.z_attr_c[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
 
+                print("Before mlp: ", ref_vect.shape, transf_vect.shape, gt_vect.shape)
                 ref_vect_ = self.H(ref_vect)
                 transf_vect_ = self.H(transf_vect)
                 gt_vect_ = self.H(gt_vect)
+
+                print("After mlp: ", ref_vect_.shape, transf_vect_.shape, gt_vect_.shape)
 
                 pos_samples = torch.bmm(ref_vect_.view(N, 1, -1), transf_vect_.view(N, -1, 1))
                 pos_samples = pos_samples.view(N, 1)
@@ -593,9 +599,9 @@ class LADN(nn.Module):
                 all_samples = torch.cat((pos_samples, neg_samples), dim=1)/self.tau
                 targets = torch.zeros(N, dtype=torch.long, device=self.device)
 
-                self.total_patch_nce_loss += self.cross_entropy_loss(all_samples, targets)
+                total_patch_nce_loss += self.cross_entropy_loss(all_samples, targets)
 
-            self.total_patch_nce_loss = self.nce_loss_weight * self.total_patch_nce_loss / self.n_local
+            total_patch_nce_loss = self.nce_loss_weight * total_patch_nce_loss / self.n_local
             # self.total_patch_nce_loss = self.total_patch_nce_loss.to(self.device)
 
         if self.local_laplacian_loss:
@@ -700,7 +706,7 @@ class LADN(nn.Module):
                 loss_G = loss_G + getattr(self, 'G_GAN_'+local_part+'_local_smooth')
 
         if self.contrastive_loss:
-            loss_G = loss_G + self.total_patch_nce_loss
+            loss_G = loss_G + total_patch_nce_loss
 
         loss_G.backward(retain_graph=True)
 
@@ -719,6 +725,9 @@ class LADN(nn.Module):
         self.G_loss = loss_G.item()
         if self.style_dis:
             self.gan_loss_style = loss_G_GAN_style.item()
+
+        if self.contrastive_loss:
+            self.total_patch_nce_loss = total_patch_nce_loss.item()
 
         if self.local_style_dis:
             for i in range(self.n_local):
@@ -893,6 +902,9 @@ class LADN(nn.Module):
         if self.style_dis:
             self.disStyle_sch.step()
 
+        if self.contrastive_loss:
+            self.H_sch.step()
+
         if self.local_style_dis:
             for i in range(self.n_local):
                 local_part = self.local_parts[i]
@@ -922,6 +934,9 @@ class LADN(nn.Module):
             if self.style_dis:
                 self.disStyle.load_state_dict(checkpoint_backup['disStyle'])
 
+            if self.contrastive_loss:
+                self.H.load_state_dict(checkpoint['H'])
+
             if self.local_style_dis:
                 for i in range(self.n_local):
                     local_part = self.local_parts[i]
@@ -946,6 +961,9 @@ class LADN(nn.Module):
             
             if self.style_dis:
                 self.disStyle_opt.load_state_dict(checkpoint_backup['disStyle_opt'])
+
+            if self.contrastive_loss:
+                self.H_opt.load_state_dict(checkpoint['H_opt'])
             
             if self.local_style_dis:
                 for i in range(self.n_local):
@@ -986,6 +1004,10 @@ class LADN(nn.Module):
         if self.style_dis:
             state['disStyle'] = self.disStyle.state_dict()
             state['disStyle_opt'] = self.disStyle_opt.state_dict()
+
+        if self.contrastive_loss:
+            state['H'] = self.H.state_dict()
+            state['H_opt'] = self.H_opt.state_dict()
         
         if self.local_style_dis:
             for i in range(self.n_local):
