@@ -201,7 +201,7 @@ def main():
 
                     wandb.log({'gan_loss_a': model.gan_loss_a, 'gan_loss_b': model.gan_loss_b}, step=total_it)
                     wandb.log({'disA_loss': model.disA_loss, 'disB_loss': model.disB_loss}, step=total_it)
-                    wandb.log({'disEYE_loss': model.disEYEStyle_loss, 'G_GAN_lefteye_loss': model.G_GAN_eye_style}, step=total_it)
+                    wandb.log({'disEYE_loss': model.disEyeStyle_loss, 'G_GAN_lefteye_loss': model.G_GAN_eye_style}, step=total_it)
 
                     if opts.contrastive_loss:
                         wandb.log({'contrastive_loss': model.total_patch_nce_loss}, step=total_it)
