@@ -70,7 +70,7 @@ def save_test_img(ep, index, model, index_a, index_b):
         img = tensor2img(img)
         imgs.append(img)
 
-    results_plot = create_grid_plot([imgs[0], imgs[1], imgs[4], imgs[3]],[imgs[5], imgs[6], imgs[9], imgs[8]])
+    results_plot = create_grid_plot([imgs[0], imgs[1], imgs[4], imgs[3]], [imgs[5], imgs[6], imgs[9], imgs[8]])
     wandb.log({"results for image %d" % (index): results_plot}, step=ep)
     plt.close(results_plot)
 
@@ -158,7 +158,7 @@ def main():
 
                 model.test_forward(images_a, images_b, images_c)
                 # saver.write_test_img(ep, i, model, index_a = index_a, index_b = index_b)
-                save_test_img(ep, i, model, index_a=index_a, index_b=index_b)
+                save_test_img(total_it, i, model, index_a=index_a, index_b=index_b)
 
         if opts.interpolate_forward and (ep + 1) % opts.test_interval == 0:
             print("starting forward for interpolated images")
