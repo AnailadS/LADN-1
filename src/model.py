@@ -584,12 +584,12 @@ class LADN(nn.Module):
                     # get GlobalAvgPooling(feature map patch of synthetic ground truth image)
                     gt_vect[k] = self.z_attr_c[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
 
-                print("Before mlp: ", ref_vect.shape, transf_vect.shape, gt_vect.shape)
+                # print("Before mlp: ", ref_vect.shape, transf_vect.shape, gt_vect.shape)
                 ref_vect_ = self.H(ref_vect)
                 transf_vect_ = self.H(transf_vect)
                 gt_vect_ = self.H(gt_vect)
 
-                print("After mlp: ", ref_vect_.shape, transf_vect_.shape, gt_vect_.shape)
+                # print("After mlp: ", ref_vect_.shape, transf_vect_.shape, gt_vect_.shape)
 
                 pos_samples = torch.bmm(ref_vect_.view(N, 1, -1), transf_vect_.view(N, -1, 1))
                 pos_samples = pos_samples.view(N, 1)
