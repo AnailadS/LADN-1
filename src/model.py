@@ -543,7 +543,7 @@ class LADN(nn.Module):
             """
             self.z_attr_b
             self.z_attr_recon_b
-            self.z_attr_c """
+            self.z_attr_a """
 
             Rh = 1.0 * self.z_attr_b.size(2)/self.real_B_encoded.size(2)
             Rw = 1.0 * self.z_attr_b.size(3)/self.real_B_encoded.size(3)
@@ -557,7 +557,7 @@ class LADN(nn.Module):
             for i in range(self.n_local):
 
                 transf_vect = torch.empty((N, C)).to(self.device)
-                gt_vect = torch.empty((N, C)).to(self.device)
+                src_vect = torch.empty((N, C)).to(self.device)
                 ref_vect = torch.empty((N, C)).to(self.device)
 
                 for k in range(N):
@@ -582,18 +582,18 @@ class LADN(nn.Module):
                     # get GlobalAvgPooling(feature map patch of transfered image)
                     transf_vect[k] = self.z_attr_recon_b[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
                     # get GlobalAvgPooling(feature map patch of synthetic ground truth image)
-                    gt_vect[k] = self.z_attr_c[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+                    src_vect[k] = self.z_attr_a[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
 
                 # print("Before mlp: ", ref_vect.shape, transf_vect.shape, gt_vect.shape)
                 ref_vect_ = self.H(ref_vect)
                 transf_vect_ = self.H(transf_vect)
-                gt_vect_ = self.H(gt_vect)
+                src_vect_ = self.H(src_vect)
 
                 # print("After mlp: ", ref_vect_.shape, transf_vect_.shape, gt_vect_.shape)
 
-                pos_samples = torch.bmm(ref_vect_.view(N, 1, -1), transf_vect_.view(N, -1, 1))
+                pos_samples = torch.bmm(transf_vect_.view(N, 1, -1), ref_vect_.view(N, -1, 1))
                 pos_samples = pos_samples.view(N, 1)
-                neg_samples = torch.bmm(ref_vect_.view(N, 1, -1), gt_vect_.view(N, -1, 1))
+                neg_samples = torch.bmm(transf_vect_.view(N, 1, -1), src_vect_.view(N, -1, 1))
                 neg_samples = neg_samples.view(N, 1)
 
                 all_samples = torch.cat((pos_samples, neg_samples), dim=1)/self.tau
