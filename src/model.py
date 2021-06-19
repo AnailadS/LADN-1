@@ -817,7 +817,6 @@ class LADN(nn.Module):
             loss_A += nn.functional.binary_cross_entropy(outputs, all_zeros)
 
         loss_A.backward()
-        self.D_CAM_A_opt.step()
 
         # update D_CAM_B (makeup disc)
         outs_B_a = self.D_CAM_B.forward(in_z_attr_a)
@@ -835,6 +834,7 @@ class LADN(nn.Module):
             loss_B += nn.functional.binary_cross_entropy(outputs, all_ones)
 
         loss_B.backward()
+        self.D_CAM_A_opt.step()
         self.D_CAM_B_opt.step()
 
 
