@@ -605,6 +605,8 @@ class LADN(nn.Module):
 
             self.D_CAM_A.requires_grad_(True)
             self.D_CAM_B.requires_grad_(True)
+
+            CAM_loss = self.update_D_CAM()
             
 
         if self.local_laplacian_loss:
@@ -710,6 +712,7 @@ class LADN(nn.Module):
 
         if self.contrastive_loss:
             loss_G = loss_G + total_patch_nce_loss
+            loss_G = loss_G + CAM_loss
 
         loss_G.backward(retain_graph=True)
 
@@ -777,6 +780,8 @@ class LADN(nn.Module):
         self.gen_opt.zero_grad()
         if self.contrastive_loss:
             self.H_opt.zero_grad()
+            self.D_CAM_A_opt.zero_grad()
+            self.D_CAM_B_opt.zero_grad()
         self.backward_EG()
 
         # self.enc_c_opt.step()
@@ -792,6 +797,8 @@ class LADN(nn.Module):
         self.enc_a_opt.step()
         if self.contrastive_loss:
             self.H_opt.step()
+            self.D_CAM_A_opt.step()
+            self.D_CAM_B_opt.step()
 
     def update_D_CAM(self):
 
@@ -802,21 +809,19 @@ class LADN(nn.Module):
         outs_A_a = self.D_CAM_A.forward(in_z_attr_a)
         outs_A_b = self.D_CAM_A.forward(in_z_attr_b)
 
-        self.D_CAM_A_opt.zero_grad()
-        self.D_CAM_B_opt.zero_grad()
+        #self.D_CAM_A_opt.zero_grad()
+        #self.D_CAM_B_opt.zero_grad()
 
-        loss_A = 0
+        loss = 0
         for out in outs_A_a:
             outputs = torch.sigmoid(out)
             all_ones = torch.ones_like(outputs).to(self.device)
-            loss_A += nn.functional.binary_cross_entropy(outputs, all_ones)
+            loss += nn.functional.binary_cross_entropy(outputs, all_ones)
 
         for out in outs_A_b:
             outputs = torch.sigmoid(out)
             all_zeros = torch.zeros_like(outputs).to(self.device)
-            loss_A += nn.functional.binary_cross_entropy(outputs, all_zeros)
-
-        loss_A.backward()
+            loss += nn.functional.binary_cross_entropy(outputs, all_zeros)
 
         # update D_CAM_B (makeup disc)
         outs_B_a = self.D_CAM_B.forward(in_z_attr_a)
@@ -826,16 +831,20 @@ class LADN(nn.Module):
         for out in outs_B_a:
             outputs = torch.sigmoid(out)
             all_zeros = torch.zeros_like(outputs).to(self.device)
-            loss_B += nn.functional.binary_cross_entropy(outputs, all_zeros)
+            loss += nn.functional.binary_cross_entropy(outputs, all_zeros)
 
         for out in outs_B_b:
             outputs = torch.sigmoid(out)
             all_ones = torch.ones_like(outputs).to(self.device)
-            loss_B += nn.functional.binary_cross_entropy(outputs, all_ones)
+            loss += nn.functional.binary_cross_entropy(outputs, all_ones)
 
-        loss_B.backward()
-        self.D_CAM_A_opt.step()
-        self.D_CAM_B_opt.step()
+
+        return loss
+
+        #loss.backward()
+
+        #self.D_CAM_A_opt.step()
+        #self.D_CAM_B_opt.step()
 
 
     # forward method for interpolation purpose

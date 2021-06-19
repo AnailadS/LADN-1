@@ -197,7 +197,6 @@ def main():
                     continue
                 else:
                     model.update_D(data)
-                    model.update_D_CAM()
                     model.update_EG()
 
                     wandb.log({'gan_loss_a': model.gan_loss_a, 'gan_loss_b': model.gan_loss_b}, step=total_it)

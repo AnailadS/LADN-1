@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="0864a15f-23df-4bff-a457-194967210e37" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/src/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/run.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -15,8 +16,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/run.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2085">
-              <caret line="199" column="40" selection-start-line="199" selection-start-column="40" selection-end-line="199" selection-end-column="40" />
+            <state relative-caret-position="585">
+              <caret line="198" column="40" selection-start-line="198" selection-start-column="40" selection-end-line="198" selection-end-column="40" />
               <folding>
                 <element signature="e#0#12#0" expanded="true" />
               </folding>
@@ -72,8 +73,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/model.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="692">
-              <caret line="836" column="31" selection-start-line="836" selection-start-column="31" selection-end-line="836" selection-end-column="31" />
+            <state relative-caret-position="-478">
+              <caret line="714" column="38" selection-start-line="714" selection-start-column="38" selection-end-line="714" selection-end-column="38" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -106,7 +107,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>resize</find>
       <find>rects_transfer_encoded</find>
       <find>encode</find>
       <find>z_attr_c</find>
@@ -135,6 +135,7 @@
       <find>update_EG</find>
       <find>update</find>
       <find>update_D_</find>
+      <find>detach</find>
       <find>self.</find>
     </findStrings>
   </component>
@@ -308,8 +309,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/run.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2085">
-          <caret line="199" column="40" selection-start-line="199" selection-start-column="40" selection-end-line="199" selection-end-column="40" />
+        <state relative-caret-position="585">
+          <caret line="198" column="40" selection-start-line="198" selection-start-column="40" selection-end-line="198" selection-end-column="40" />
           <folding>
             <element signature="e#0#12#0" expanded="true" />
           </folding>
@@ -318,8 +319,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/model.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="692">
-          <caret line="836" column="31" selection-start-line="836" selection-start-column="31" selection-end-line="836" selection-end-column="31" />
+        <state relative-caret-position="-478">
+          <caret line="714" column="38" selection-start-line="714" selection-start-column="38" selection-end-line="714" selection-end-column="38" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
