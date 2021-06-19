@@ -48,7 +48,14 @@ class LADN(nn.Module):
             self.H = init_net(networks.H(), opts.gpu, init_type='normal', gain=0.02)
             self.H_opt = torch.optim.Adam(self.H.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0.0001)
             self.cross_entropy_loss = nn.CrossEntropyLoss()
-            self.nce_loss_weight = 2.0
+            self.nce_loss_weight = 10.0
+
+            self.D_CAM_A = init_net(networks.D_CAM(), opts.gpu, init_type='normal', gain=0.02)
+            self.D_CAM_A_opt = torch.optim.Adam(self.D_CAM_A.parameters(), lr=lr, betas=(0.5, 0.999),
+                                                weight_decay=0.0001)
+            self.D_CAM_B = init_net(networks.D_CAM(), opts.gpu, init_type='normal', gain=0.02)
+            self.D_CAM_B_opt = torch.optim.Adam(self.D_CAM_B.parameters(), lr=lr, betas=(0.5, 0.999),
+                                                weight_decay=0.0001)
 
         # discriminators
         self.disA = init_net(networks.MultiScaleDis(opts.input_dim_a, opts.dis_scale, norm=opts.dis_norm, sn=opts.dis_spectral_norm), opts.backup_gpu, init_type='normal', gain=0.02)
@@ -113,6 +120,8 @@ class LADN(nn.Module):
 
         if self.contrastive_loss:
             self.H_sch = networks.get_scheduler(self.H_opt, opts, last_ep)
+            self.D_CAM_A_sch = networks.get_scheduler(self.D_CAM_A_opt, opts, last_ep)
+            self.D_CAM_B_sch = networks.get_scheduler(self.D_CAM_B_opt, opts, last_ep)
         
         if self.local_style_dis:
             for i in range(self.n_local):
@@ -540,69 +549,58 @@ class LADN(nn.Module):
                     setattr(self, 'G_GAN_'+local_part+'2_style', loss_G_GAN_local_style.to(self.device))
 
         if self.contrastive_loss:
-            """
-            self.z_attr_b
+
+            """self.z_attr_a
             self.z_attr_recon_b
-            self.z_attr_c """
+            
+            """
 
-            Rh = 1.0 * self.z_attr_b.size(2)/self.real_B_encoded.size(2)
-            Rw = 1.0 * self.z_attr_b.size(3)/self.real_B_encoded.size(3)
+            self.D_CAM_A.requires_grad_(False)
+            self.D_CAM_B.requires_grad_(False)
 
-            N = self.real_B_encoded.size(0)
-            C = self.z_attr_b.size(1)
+            makeup_maps = self.D_CAM_B.fc3.weight.reshape((self.D_CAM_B.fc3.weight.shape[0],
+                                                           self.D_CAM_B.fc3.weight.shape[1], 1, 1)) * self.z_attr_recon_b
+            makeup_cam = makeup_maps.sum(dim=1)
+            makeup_cam = (makeup_cam - makeup_cam.min()) / (makeup_cam.max() - makeup_cam.min())
 
-            total_patch_nce_loss = 0
+            nonmakeup_maps = self.D_CAM_A.fc3.weight.reshape((self.D_CAM_A.fc3.weight.shape[0],
+                                                           self.D_CAM_A.fc3.weight.shape[1], 1, 1)) * self.z_attr_a
+            nonmakeup_cam = nonmakeup_maps.sum(dim=1)
+            nonmakeup_cam = (nonmakeup_cam - nonmakeup_cam.min()) / (nonmakeup_cam.max() - nonmakeup_cam.min())
 
+            pos_mask = (makeup_cam <= 0.5) * (nonmakeup_cam > 0.5)
+            pos_samples = pos_mask * self.z_attr_recon_b
+            pos_vect = pos_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
+            pos_vect = self.H(pos_vect)
 
-            for i in range(self.n_local):
+            neg_mask = (makeup_cam > 0.5) * (nonmakeup_cam > 0.5)
+            neg_samples = neg_mask * self.z_attr_recon_b
+            neg_vect = neg_samples.sum(dim=(-1, -2))/neg_mask.sum(dim=(-1, -2))
+            neg_vect = self.H(neg_vect)
 
-                transf_vect = torch.empty((N, C)).to(self.device)
-                gt_vect = torch.empty((N, C)).to(self.device)
-                ref_vect = torch.empty((N, C)).to(self.device)
+            query_pos_samples = pos_mask * self.z_attr_a
+            query_pos_vect = query_pos_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
+            query_pos_vect = self.H(query_pos_vect)
 
-                for k in range(N):
+            query_neg_samples = neg_mask * self.z_attr_a
+            query_neg_vect = query_neg_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
+            query_neg_vect = self.H(query_neg_vect)
 
-                    # get reference image rect coordinates
-                    x1, x2, y1, y2 = self.rects_after_encoded[k, i, :]
-                    # convert them to feature map location
-                    x1 = int(x1 * Rh)
-                    x2 = int(x2 * Rh)
-                    y1 = int(y1 * Rw)
-                    y2 = int(y2 * Rw)
-                    # get GlobalAvgPooling(feature map patch of reference image)
-                    ref_vect[k] = self.z_attr_b[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+            N = pos_samples.size(0)
 
-                    # get transfer image rect coordinates
-                    x1, x2, y1, y2 = self.rects_transfer_encoded[k, i, :]
-                    # convert them to feature map location
-                    x1 = int(x1 * Rh)
-                    x2 = int(x2 * Rh)
-                    y1 = int(y1 * Rw)
-                    y2 = int(y2 * Rw)
-                    # get GlobalAvgPooling(feature map patch of transfered image)
-                    transf_vect[k] = self.z_attr_recon_b[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
-                    # get GlobalAvgPooling(feature map patch of synthetic ground truth image)
-                    gt_vect[k] = self.z_attr_c[k, :, x1:x2, y1:y2].mean(dim=(-1, -2))
+            pos_ = torch.bmm(pos_vect.view(N, 1, -1), query_pos_vect.view(N, -1, 1))
+            pos_ = pos_.view(N, 1)
+            neg_ = torch.bmm(neg_vect.view(N, 1, -1), query_neg_vect.view(N, -1, 1))
+            neg_ = neg_.view(N, 1)
 
-                # print("Before mlp: ", ref_vect.shape, transf_vect.shape, gt_vect.shape)
-                ref_vect_ = self.H(ref_vect)
-                transf_vect_ = self.H(transf_vect)
-                gt_vect_ = self.H(gt_vect)
+            all_samples = torch.cat((pos_, neg_), dim=1) / self.tau
+            targets = torch.zeros(N, dtype=torch.long, device=self.device)
 
-                # print("After mlp: ", ref_vect_.shape, transf_vect_.shape, gt_vect_.shape)
+            total_patch_nce_loss = self.nce_loss_weight * self.cross_entropy_loss(all_samples, targets)
 
-                pos_samples = torch.bmm(ref_vect_.view(N, 1, -1), transf_vect_.view(N, -1, 1))
-                pos_samples = pos_samples.view(N, 1)
-                neg_samples = torch.bmm(ref_vect_.view(N, 1, -1), gt_vect_.view(N, -1, 1))
-                neg_samples = neg_samples.view(N, 1)
-
-                all_samples = torch.cat((pos_samples, neg_samples), dim=1)/self.tau
-                targets = torch.zeros(N, dtype=torch.long, device=self.device)
-
-                total_patch_nce_loss += self.cross_entropy_loss(all_samples, targets)
-
-            total_patch_nce_loss = self.nce_loss_weight * total_patch_nce_loss / self.n_local
-            # self.total_patch_nce_loss = self.total_patch_nce_loss.to(self.device)
+            self.D_CAM_A.requires_grad_(True)
+            self.D_CAM_B.requires_grad_(True)
+            
 
         if self.local_laplacian_loss:
             for i in range(self.n_local):
@@ -790,6 +788,48 @@ class LADN(nn.Module):
         if self.contrastive_loss:
             self.H_opt.step()
 
+    def update_D_CAM(self):
+
+        in_z_attr_a = self.z_attr_a.mean(dim=(-1, -2))
+        in_z_attr_b = self.z_attr_b.mean(dim=(-1, -2))
+
+        # update D_CAM_A (no makeup disc)
+        outs_A_a = self.D_CAM_A.forward(in_z_attr_a)
+        outs_A_b = self.D_CAM_A.forward(in_z_attr_b)
+
+        loss_A = 0
+        for out in outs_A_a:
+            outputs = torch.sigmoid(out)
+            all_ones = torch.ones_like(outputs).to(self.device)
+            loss_A += nn.functional.binary_cross_entropy(outputs, all_ones)
+
+        for out in outs_A_b:
+            outputs = torch.sigmoid(out)
+            all_zeros = torch.zeros_like(outputs).to(self.device)
+            loss_A += nn.functional.binary_cross_entropy(outputs, all_zeros)
+
+        loss_A.backward()
+        self.D_CAM_A_opt.step()
+
+        # update D_CAM_B (makeup disc)
+        outs_B_a = self.D_CAM_B.forward(in_z_attr_a)
+        outs_B_b = self.D_CAM_B.forward(in_z_attr_b)
+
+        loss_B = 0
+        for out in outs_B_a:
+            outputs = torch.sigmoid(out)
+            all_zeros = torch.zeros_like(outputs).to(self.device)
+            loss_B += nn.functional.binary_cross_entropy(outputs, all_zeros)
+
+        for out in outs_B_b:
+            outputs = torch.sigmoid(out)
+            all_ones = torch.ones_like(outputs).to(self.device)
+            loss_B += nn.functional.binary_cross_entropy(outputs, all_ones)
+
+        loss_B.backward()
+        self.D_CAM_B_opt.step()
+
+
     # forward method for interpolation purpose
     def interpolate_forward(self, images_a, images_b1, images_b2):
         with torch.no_grad():
@@ -904,6 +944,8 @@ class LADN(nn.Module):
 
         if self.contrastive_loss:
             self.H_sch.step()
+            self.D_CAM_A_sch.step()
+            self.D_CAM_B_sch.step()
 
         if self.local_style_dis:
             for i in range(self.n_local):
@@ -936,6 +978,8 @@ class LADN(nn.Module):
 
             if self.contrastive_loss:
                 self.H.load_state_dict(checkpoint['H'])
+                self.D_CAM_A.load_state_dict([checkpoint['D_CAM_A']])
+                self.D_CAM_B.load_state_dict([checkpoint['D_CAM_B']])
 
             if self.local_style_dis:
                 for i in range(self.n_local):
@@ -964,6 +1008,8 @@ class LADN(nn.Module):
 
             if self.contrastive_loss:
                 self.H_opt.load_state_dict(checkpoint['H_opt'])
+                self.D_CAM_A_opt.load_state_dict(checkpoint['D_CAM_A_opt'])
+                self.D_CAM_B_opt.load_state_dict(checkpoint['D_CAM_B_opt'])
             
             if self.local_style_dis:
                 for i in range(self.n_local):
@@ -1008,6 +1054,10 @@ class LADN(nn.Module):
         if self.contrastive_loss:
             state['H'] = self.H.state_dict()
             state['H_opt'] = self.H_opt.state_dict()
+            state['D_CAM_A'] = self.D_CAM_A.state_dict()
+            state['D_CAM_A_opt'] = self.D_CAM_A_opt.state_dict()
+            state['D_CAM_B'] = self.D_CAM_B.state_dict()
+            state['D_CAM_B_opt'] = self.D_CAM_B_opt.state_dict()
         
         if self.local_style_dis:
             for i in range(self.n_local):

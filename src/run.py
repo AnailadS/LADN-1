@@ -197,6 +197,7 @@ def main():
                     continue
                 else:
                     model.update_D(data)
+                    model.update_D_CAM()
                     model.update_EG()
 
                     wandb.log({'gan_loss_a': model.gan_loss_a, 'gan_loss_b': model.gan_loss_b}, step=total_it)
@@ -205,6 +206,7 @@ def main():
 
                     if opts.contrastive_loss:
                         wandb.log({'contrastive_loss': model.total_patch_nce_loss}, step=total_it)
+
 
                 # save to display file
                 # if not opts.no_display_img:

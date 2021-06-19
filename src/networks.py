@@ -6,6 +6,22 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 
+class D_CAM(nn.Module):
+    def __init__(self, ngf=64):
+        super(D_CAM, self).__init__()
+        self.nc = 2 * ngf
+        self.fc1 = nn.Linear(self.nc, self.nc)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(self.nc, self.nc)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(self.nc, 1)
+
+    def forward(self, inputs):
+        out1 = self.relu1(self.fc1(inputs))
+        out2 = self.relu2(self.fc2(out1))
+        out = self.fc3(out2)
+        return out
+
 class H(nn.Module):
     def __init__(self, ngf=64, nc=256):
         super(H, self).__init__()
