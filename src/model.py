@@ -560,7 +560,10 @@ class LADN(nn.Module):
 
             makeup_maps = self.D_CAM_B.fc3.weight.reshape((self.D_CAM_B.fc3.weight.shape[0],
                                                            self.D_CAM_B.fc3.weight.shape[1], 1, 1)) * self.z_attr_recon_b
+
+            print("before sum along C:", makeup_maps.shape)
             makeup_cam = makeup_maps.sum(dim=1)
+            print("after sum along C:", makeup_cam.shape)
             makeup_cam = (makeup_cam - makeup_cam.min()) / (makeup_cam.max() - makeup_cam.min())
 
             nonmakeup_maps = self.D_CAM_A.fc3.weight.reshape((self.D_CAM_A.fc3.weight.shape[0],
@@ -571,6 +574,7 @@ class LADN(nn.Module):
             pos_mask = (makeup_cam <= 0.5) * (nonmakeup_cam > 0.5)
             pos_samples = pos_mask * self.z_attr_recon_b
             pos_vect = pos_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
+            print("pos vect: ", pos_vect.shape)
             pos_vect = self.H(pos_vect)
 
             neg_mask = (makeup_cam > 0.5) * (nonmakeup_cam > 0.5)
@@ -580,6 +584,7 @@ class LADN(nn.Module):
 
             query_pos_samples = pos_mask * self.z_attr_a
             query_pos_vect = query_pos_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
+            print("query pos vect: ", query_pos_vect.shape)
             query_pos_vect = self.H(query_pos_vect)
 
             query_neg_samples = neg_mask * self.z_attr_a
@@ -796,6 +801,9 @@ class LADN(nn.Module):
         # update D_CAM_A (no makeup disc)
         outs_A_a = self.D_CAM_A.forward(in_z_attr_a)
         outs_A_b = self.D_CAM_A.forward(in_z_attr_b)
+
+        self.D_CAM_A_opt.zero_grad()
+        self.D_CAM_B_opt.zero_grad()
 
         loss_A = 0
         for out in outs_A_a:
