@@ -592,13 +592,13 @@ class LADN(nn.Module):
             nonmakeup_cam = nonmakeup_maps.sum(dim=1)
             nonmakeup_cam = (nonmakeup_cam - nonmakeup_cam.min()) / (nonmakeup_cam.max() - nonmakeup_cam.min())
 
-            pos_mask = (makeup_cam <= 0.5) * (nonmakeup_cam > 0.5)
+            pos_mask = (makeup_cam <= 0.6) * (nonmakeup_cam > 0.3)
             pos_samples = pos_mask * self.z_attr_recon_b
             pos_vect = pos_samples.sum(dim=(-1, -2))/pos_mask.sum(dim=(-1, -2))
             # print("pos vect: ", pos_vect.shape)
             pos_vect = self.H(pos_vect)
 
-            neg_mask = (makeup_cam > 0.5) * (nonmakeup_cam > 0.5)
+            neg_mask = (makeup_cam > 0.4) * (nonmakeup_cam > 0.3)
             neg_samples = neg_mask * self.z_attr_recon_b
             neg_vect = neg_samples.sum(dim=(-1, -2))/neg_mask.sum(dim=(-1, -2))
             neg_vect = self.H(neg_vect)
