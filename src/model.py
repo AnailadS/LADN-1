@@ -145,14 +145,18 @@ class LADN(nn.Module):
         pred_fake = self.disContent.forward(self.z_content_a[1].detach().to(self.backup_device))
         pred_real = self.disContent.forward(self.z_content_b[1].detach().to(self.backup_device))
 
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
+
         loss_D = 0
         for it, (out_a, out_b) in enumerate(zip(pred_fake, pred_real)):
-            out_fake = torch.sigmoid(out_a)
-            out_real = torch.sigmoid(out_b)
+            #out_fake = torch.sigmoid(out_a)
+            #out_real = torch.sigmoid(out_b)
+            out_fake = out_a
+            out_real = out_b
             all1 = torch.ones((out_real.size(0))).to(self.backup_device)
             all0 = torch.zeros((out_fake.size(0))).to(self.backup_device)
-            ad_true_loss = nn.functional.binary_cross_entropy(out_real, all1)
-            ad_fake_loss = nn.functional.binary_cross_entropy(out_fake, all0)
+            ad_true_loss = criterion(out_real, all1)
+            ad_fake_loss = criterion(out_fake, all0)
             loss_D += ad_true_loss + ad_fake_loss
         loss_D.backward()
         return loss_D
@@ -190,14 +194,17 @@ class LADN(nn.Module):
     def backward_styleD(self):
         pred_fake = self.disStyle.forward(self.real_B_encoded.to(self.backup_device), self.fake_B_encoded.detach().to(self.backup_device))
         pred_real = self.disStyle.forward(self.real_B_encoded.to(self.backup_device), self.real_C_encoded.to(self.backup_device))
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         loss_D = 0
         for it, (out_a, out_b) in enumerate(zip(pred_fake, pred_real)):
-            out_fake = torch.sigmoid(out_a)
-            out_real = torch.sigmoid(out_b)
+            #out_fake = torch.sigmoid(out_a)
+            #out_real = torch.sigmoid(out_b)
+            out_fake = out_a
+            out_real = out_b
             all1 = torch.ones((out_real.size(0))).to(self.backup_device)
             all0 = torch.zeros((out_fake.size(0))).to(self.backup_device)
-            ad_true_loss = nn.functional.binary_cross_entropy(out_real, all1)
-            ad_fake_loss = nn.functional.binary_cross_entropy(out_fake, all0)
+            ad_true_loss = criterion(out_real, all1)
+            ad_fake_loss = criterion(out_fake, all0)
             loss_D += (ad_true_loss + ad_fake_loss)
         loss_D = loss_D * self.style_d_ls_weight
         loss_D.backward()
@@ -257,13 +264,16 @@ class LADN(nn.Module):
         pred_fake = netD.forward(after_crop.detach(), transfer_crop.detach())
         pred_real = netD.forward(after_crop.detach(), blend_crop.detach())
         loss_D = 0
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         for it, (out_a, out_b) in enumerate(zip(pred_fake, pred_real)):
-            out_fake = torch.sigmoid(out_a)
-            out_real = torch.sigmoid(out_b)
+            # out_fake = torch.sigmoid(out_a)
+            # out_real = torch.sigmoid(out_b)
+            out_fake = out_a
+            out_real = out_b
             all1 = torch.ones((out_real.size(0))).to(self.backup_device)
             all0 = torch.zeros((out_fake.size(0))).to(self.backup_device)
-            ad_true_loss = nn.functional.binary_cross_entropy(out_real, all1)
-            ad_fake_loss = nn.functional.binary_cross_entropy(out_fake, all0)
+            ad_true_loss = criterion(out_real, all1)
+            ad_fake_loss = criterion(out_fake, all0)
             loss_D += (ad_true_loss + ad_fake_loss)
         loss_D = loss_D * self.style_d_ls_weight / self.n_local
         loss_D.backward()
@@ -374,13 +384,16 @@ class LADN(nn.Module):
         pred_fake = netD.forward(fake.detach().to(self.backup_device))
         pred_real = netD.forward(real.to(self.backup_device))
         loss_D = 0
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         for it, (out_a, out_b) in enumerate(zip(pred_fake, pred_real)):
-            out_fake = torch.sigmoid(out_a)
-            out_real = torch.sigmoid(out_b)
+            # out_fake = torch.sigmoid(out_a)
+            # out_real = torch.sigmoid(out_b)
+            out_fake = out_a
+            out_real = out_b
             all0 = torch.zeros_like(out_fake).to(self.backup_device)
             all1 = torch.ones_like(out_real).to(self.backup_device)
-            ad_fake_loss = nn.functional.binary_cross_entropy(out_fake, all0)
-            ad_true_loss = nn.functional.binary_cross_entropy(out_real, all1)
+            ad_fake_loss = criterion(out_fake, all0)
+            ad_true_loss = criterion(out_real, all1)
             loss_D += ad_true_loss + ad_fake_loss
         loss_D.backward()
         return loss_D
@@ -462,31 +475,37 @@ class LADN(nn.Module):
 
     def backward_G_GAN_content(self, z_content):
         outs = self.disContent.forward(z_content[1].to(self.backup_device))
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         loss_G = 0
         for out in outs:
-            outputs_fake = torch.sigmoid(out)
+            # outputs_fake = torch.sigmoid(out)
+            outputs_fake = out
             all_half = 0.5*torch.ones((outputs_fake.size(0))).to(self.backup_device)
-            loss_G += nn.functional.binary_cross_entropy(outputs_fake, all_half)
+            loss_G += criterion(outputs_fake, all_half)
         return loss_G
 
 
     def backward_G_GAN(self, fake, netD):
         outs_fake = netD.forward(fake.to(self.backup_device))
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         loss_G = 0
         for out_a in outs_fake:
-            outputs_fake = torch.sigmoid(out_a)
+            # outputs_fake = torch.sigmoid(out_a)
+            outputs_fake = out_a
             all_ones = torch.ones_like(outputs_fake).to(self.backup_device)
-            loss_G += nn.functional.binary_cross_entropy(outputs_fake, all_ones)
+            loss_G += criterion(outputs_fake, all_ones)
         return loss_G
 
 
     def backward_G_GAN_style(self):
         outs = self.disStyle.forward(self.real_B_encoded.to(self.backup_device), self.fake_B_encoded.to(self.backup_device))
         loss_G = 0
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         for out in outs:
-            outputs_fake = torch.sigmoid(out)
+            #outputs_fake = torch.sigmoid(out)
+            outputs_fake = out
             all_ones = torch.ones((outputs_fake.size(0))).to(self.backup_device)
-            loss_G += nn.functional.binary_cross_entropy(outputs_fake, all_ones)
+            loss_G += criterion(outputs_fake, all_ones)
         loss_G = loss_G * self.style_g_ls_weight
         return loss_G
 
@@ -514,11 +533,13 @@ class LADN(nn.Module):
                 after_crop[i] = self.real_B_encoded[i,:,x1_a:x2_a,y1_a:y2_a].index_select(2, idx_backup).clone()
 
         outs_fake = netD.forward(after_crop.detach(), transfer_crop)
+        criterion = nn.BCEWithLogitsLoss().to(self.backup_device)
         loss_G = 0
         for out_a in outs_fake:
-            outputs_fake = torch.sigmoid(out_a)
+            # outputs_fake = torch.sigmoid(out_a)
+            outputs_fake = out_a
             all_ones = torch.ones_like(outputs_fake).to(self.backup_device)
-            loss_G += nn.functional.binary_cross_entropy(outputs_fake, all_ones)
+            loss_G += criterion(outputs_fake, all_ones)
         loss_G = loss_G * self.style_g_ls_weight / self.n_local
         return loss_G
 
@@ -812,16 +833,18 @@ class LADN(nn.Module):
         #self.D_CAM_A_opt.zero_grad()
         #self.D_CAM_B_opt.zero_grad()
 
+        criterion = nn.BCEWithLogitsLoss().to(self.device)
+
         loss = 0
         for out in outs_A_a:
-            outputs = torch.sigmoid(out)
-            all_ones = torch.ones_like(outputs).to(self.device)
-            loss += nn.functional.binary_cross_entropy(outputs, all_ones)
+            # outputs = torch.sigmoid(out)
+            all_ones = torch.ones_like(out).to(self.device)
+            loss += criterion(out, all_ones)
 
         for out in outs_A_b:
-            outputs = torch.sigmoid(out)
-            all_zeros = torch.zeros_like(outputs).to(self.device)
-            loss += nn.functional.binary_cross_entropy(outputs, all_zeros)
+            # outputs = torch.sigmoid(out)
+            all_zeros = torch.zeros_like(out).to(self.device)
+            loss += criterion(out, all_zeros)
 
         # update D_CAM_B (makeup disc)
         outs_B_a = self.D_CAM_B.forward(in_z_attr_a)
@@ -829,14 +852,14 @@ class LADN(nn.Module):
 
         loss_B = 0
         for out in outs_B_a:
-            outputs = torch.sigmoid(out)
-            all_zeros = torch.zeros_like(outputs).to(self.device)
-            loss += nn.functional.binary_cross_entropy(outputs, all_zeros)
+            # outputs = torch.sigmoid(out)
+            all_zeros = torch.zeros_like(out).to(self.device)
+            loss += criterion(out, all_zeros)
 
         for out in outs_B_b:
-            outputs = torch.sigmoid(out)
-            all_ones = torch.ones_like(outputs).to(self.device)
-            loss += nn.functional.binary_cross_entropy(outputs, all_ones)
+            # outputs = torch.sigmoid(out)
+            all_ones = torch.ones_like(out).to(self.device)
+            loss += criterion(out, all_ones)
 
 
         return loss
